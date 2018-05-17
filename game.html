@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        #playground{
+            margin: 0px auto;
+            cursor: none;
+        }
+    </style>
+</head>
+<body>
+    <div></div>
+    <canvas id="playground" width="512" height="768"></canvas>
+    <!--<p>上下左右控制，shift减慢自己移动速度</p>-->
+
+    <script src="js/stage.js"></script>
+    <script src="js/jet.js"></script>
+    <script src="js/bullet.js"></script>
+    <script src="js/enemy.js"></script>
+    <script src="js/stageMap.js"></script>
+    <script type="text/javascript">
+        var canvas = document.getElementById("playground");
+        var ctx = canvas.getContext("2d");
+        ctx.font = "12px Arial";
+        var stage = new Stage();
+        var score = 0;
+        var stageinit = false;
+        var fire = false;
+        var start = false;
+        var win = false;
+        var inited = false;
+        clearSrc();
+        var jet = new Jet();
+        var stageid = 0;
+
+        document.onkeydown = function(ev){
+            if(!inited && ev.keyCode === 32){
+                inited = true;
+                stage.read(stageid);
+            }
+            if(win && ev.keyCode === 82){
+                win = false;
+                resetGame(0);
+                return;
+            }
+            if(!start || win) return;
+            clearSrc();
+            if(jet.destroyed && ev.keyCode !== 82) return;
+            if(ev.shiftKey) jet.speed = 2;
+            else jet.speed = 10;
+            switch(ev.keyCode){
+                case 37: // left
+                    jet.move("left");
+                    break;
+                case 39: // right
+                    jet.move("right");
+                    break;
+                case 38: // up
+                    jet.move("up");
+                    break;
+                case 40: // down
+                    jet.move("down");
+                    break;
+                case 90: // fire
+                    fire = true;
+                    break;
+                case 82: // reset
+                    if(jet.destroyed){
+                        score = 0;
+                        resetGame(0);
+                    }
+                    break;
+            }
+            jet.draw(ctx);
+        };
+
+        document.onkeyup = function(ev){
+            if(!start || win) return;
+            if(ev.keyCode === 90) fire = false;
+        };
+
+        canvas.onmousemove = function(ev){
+            if(!start || win) return;
+            clearSrc();
+            if(jet.destroyed) return;
+            var X = ev.clientX;
+            var Y = ev.clientY;
+            jet.pos.X = X;
+            jet.pos.Y = Y - jet.size.H / 2;
+        };
+
+        setInterval(function(){
+            if(fire) jet.fire();
+        }, 100);
+
+        requestAnimationFrame(frame);
+
+        function frame(){
+            clearSrc();
+            ctx.fillStyle = "#fff";
+            ctx.font = "12px Arial";
+            ctx.fillText("作者：木可柴", 430, 16);
+            if(!inited){
+                drawtitle();
+                requestAnimationFrame(frame);
+                return;
+            }
+            if(win){
+                stage.stagemap.printWin(ctx);
+                requestAnimationFrame(frame);
+                return;
+            }
+            if(!start)stage.stagemap.stageInit(ctx, stageid + 1);
+            if(!stageinit){
+                setTimeout(function(){
+                    start = true;
+                    stageinit = true;
+                    ctx.font = "12px Arial";
+                }, 3000);
+            }
+            if(!start) {
+                requestAnimationFrame(frame);
+                return;
+            }
+            ctx.fillStyle = "#fff";
+            ctx.font = "12px Arial";
+            ctx.fillText("Score: " + score, 5, 16);
+            jet.draw(ctx);
+            jet.moveBullet(stage.enemies);
+            for(var i = 0; i < stage.enemies.length; i++){
+                stage.enemies[i].draw(ctx);
+                stage.enemies[i].moveBullet(jet);
+                if(stage.enemies[i].life <= 0 && !stage.enemies[i].destroyed){
+                    stage.enemies[i].destroy();
+                }
+                if(stage.enemies[i].destroyed){
+                    stage.enemies.splice(i, 1);
+                    i--;
+                }
+            }
+            stage.act();
+            if(!jet.destroyed){
+                score += 1;
+            }
+            else{
+                for(var i = 0; i < stage.enemies.length; i++){
+                    stage.enemies[i].setAttackType(4);
+                }
+            }
+            requestAnimationFrame(frame);
+        }
+
+        function drawtitle(){
+            ctx.fillStyle = "#fff";
+            ctx.font="40px Arial";
+            ctx.fillText("飞机大战", 160, 200);
+            ctx.font="20px Arial";
+            ctx.fillText("v1.0", 220, 250);
+            ctx.fillText("帮助：按Z攻击，移动鼠标或按上下左右移动", 60, 650);
+            ctx.fillText("按空格键开始游戏", 160, 350);
+			ctx.fillText("不兼容IE8", 190, 400);
+        }
+
+        function resetGame(level){
+            jet = new Jet();
+            stageinit = false;
+            win = false;
+            start = false;
+            stageid = level;
+            stage.read(stageid);
+        }
+
+        function clearSrc(){
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    </script>
+</body>
+</html>
